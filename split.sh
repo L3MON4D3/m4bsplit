@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Very slightly adapted (make shellcheck pass) from
+# https://gist.github.com/izderadicka/0efc16bd150d70b7c504ab15f95c11ab
+
 # Author : <Ivan Zderadicka> ivan@zderadicka.eu
 # License: MIT
 
@@ -60,7 +64,7 @@ while  (( $# > 0 )); do
                                         CUTOFF=12000
 					;;
 				*)
-					echo Invalid quality param $2 >&2
+					echo Invalid quality param "$2" >&2
 					exit 1
 					;;
 			esac
@@ -84,7 +88,7 @@ done
 OPUS_PARAMS="-acodec libopus -b:a ${BITRATE}k -vbr on -compression_level 10 -application audio -cutoff $CUTOFF"
 
 temp_file=$(mktemp) || exit 1
-trap "rm -f -- $temp_file" EXIT
+trap 'rm -f -- $temp_file' EXIT
 trap "exit 2" SIGINT
 
 wait_proc() {
@@ -94,9 +98,9 @@ wait_proc() {
 }
 
 while [[ $# -gt 0 ]]; do
-	echo Processing file $1
+	echo Processing file "$1"
 	if [[ ! -f "$1" ]]; then
-		echo File $1 does not exists >&2
+		echo File "$1" does not exists >&2
 		shift
 		continue
 	fi
@@ -111,39 +115,41 @@ while [[ $# -gt 0 ]]; do
 		COMMON_PARAMS="-activation_bytes $ACTIVATION_BYTES $COMMON_PARAMS"
 	fi
 
-	ffprobe -v error -print_format compact=nokey=1 -show_chapters "$1" > $temp_file
+	ffprobe -v error -print_format compact=nokey=1 -show_chapters "$1" > "$temp_file"
 	dirname=${1%.*}
 	if [[ -n "$REPLACE_DIR" && -e "$dirname" ]]; then
 		rm -r "$dirname"
 	fi
 	
-	mkdir "$dirname"
-	if [[ $? != 0 ]]; then
+	
+	if ! mkdir "$dirname"; then
 		echo "Directory $dirname exists or cannot be created" >&2
 		shift
 		continue
 	fi
-	num_chapters=$(wc -l < $temp_file)
-	if [[ $num_chapters -gt 1 ]]; then
+	num_chapters=$(wc -l < "$temp_file")
+	if [[ "$num_chapters" -gt 1 ]]; then
 		count=0
-		while IFS=\| read -r _ id _ _ start _ end chapter; do
+		while IFS=\| read -r _ _ _ _ start _ end chapter; do
 			((count++))
-			echo Processing chapter $count of $num_chapters
+			echo Processing chapter $count of "$num_chapters"
 			chap=${chapter/\//-}
 			{
+			# shellcheck disable=SC2086
 			ffmpeg $COMMON_PARAMS -i "$1" -ss "$start" -to "$end" -vn $OPUS_PARAMS\
 			-metadata title="$chapter"\
 			-metadata track="$count/$num_chapters"\
-			"$dirname/$(printf %03d $(($count-1))) - $chap.opus" 
+			"$dirname/$(printf %03d $((count-1))) - $chap.opus" 
+			# shellcheck disable=SC2181
 			if [[ $? -ne 0 ]]; then
-				echo Error processing chapter $count of $num_chapters >&2
+				echo Error processing chapter "$count" of "$num_chapters" >&2
 			else
-				echo Finished chapter $count of $num_chapters
+				echo Finished chapter "$count" of "$num_chapters"
 			fi
 			 } &
 		wait_proc
 
-		done < $temp_file
+		done < "$temp_file"
 	else
 		echo "No chapters found"
 		echo "Splitting file into pieces of $SEGMENT_TIME secs"
@@ -154,23 +160,26 @@ while [[ $# -gt 0 ]]; do
 		if [[ $ext = "m4b" ]]; then
 			ext=m4a
 		fi
+		# shellcheck disable=SC2086
 		ffmpeg $COMMON_PARAMS -stats -i "$1"  -vn -acodec copy -f segment -segment_time $SEGMENT_TIME\
-		-reset_timestamps 1  "$dirname/%03d.$ext"
+		 -reset_timestamps 1 "$dirname/%03d.$ext"
 		count=0
-		num_files=$(ls -1q "$dirname" | wc -l)
-		echo Done with file split - number of parts is $num_files
+		num_files=$(find . -type f "$dirname" | wc -l)
+		echo Done with file split - number of parts is "$num_files"
 		for f in "$dirname/"*; do
 			((count++))
-			echo Processing part $count of $num_files
+			echo Processing part $count of "$num_files"
 			{
+			# shellcheck disable=SC2086
 			ffmpeg $COMMON_PARAMS -i "$f" $OPUS_PARAMS -metadata track=$count/$num_files\
 			 -metadata title="Part $(($count - 1))" "${f%.*}.opus"
 
+			# shellcheck disable=SC2181
 			if [[ $? = 0 ]]; then
 			 	rm "$f"
-				echo Finished part $count of $num_files 
+				echo Finished part "$count" of "$num_files" 
 			else
-				echo Error converting file $f >&2
+				echo Error converting file "$f" >&2
 			fi
 			} &
 			wait_proc
@@ -178,6 +187,8 @@ while [[ $# -gt 0 ]]; do
 
 	fi
 		# try extract cover art
+
+		# shellcheck disable=SC2086
 		ffmpeg $COMMON_PARAMS -i "$1" "$dirname/cover.jpg"
 		
 
