@@ -133,7 +133,7 @@ while [[ $# -gt 0 ]]; do
 	if [[ "$num_chapters" -gt 1 ]]; then
 		count=0
 		while IFS=\| read -r _ _ _ _ start _ end chapter; do
-			((count++))
+			count=$((count+1))
 			echo Processing chapter $count of "$num_chapters"
 			chap=${chapter/\//-}
 			{
@@ -169,7 +169,7 @@ while [[ $# -gt 0 ]]; do
 		num_files=$(find . -type f "$dirname" | wc -l)
 		echo Done with file split - number of parts is "$num_files"
 		for f in "$dirname/"*; do
-			((count++))
+			count=$((count+1))
 			echo Processing part $count of "$num_files"
 			{
 			# shellcheck disable=SC2086
