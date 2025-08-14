@@ -12,6 +12,8 @@ BITRATE=48
 CUTOFF=12000
 SEGMENT_TIME=1800
 COMMON_PARAMS="-nostdin -v error"
+ACTIVATION_BYTES=""
+REPLACE_DIR=""
 
 print_help () {
 	cat << EOF
