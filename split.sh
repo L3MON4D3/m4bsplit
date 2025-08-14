@@ -138,7 +138,7 @@ while [[ $# -gt 0 ]]; do
 			# shellcheck disable=SC2086
 			ffmpeg $COMMON_PARAMS -i "$1" -ss "$start" -to "$end" -vn $OPUS_PARAMS\
 			-metadata title="$chapter"\
-			-metadata track="$count/$num_chapters"\
+			-metadata track="$count"\
 			"$dirname/$(printf %03d $((count-1))) - $chap.opus" 
 			# shellcheck disable=SC2181
 			if [[ $? -ne 0 ]]; then
@@ -171,8 +171,8 @@ while [[ $# -gt 0 ]]; do
 			echo Processing part $count of "$num_files"
 			{
 			# shellcheck disable=SC2086
-			ffmpeg $COMMON_PARAMS -i "$f" $OPUS_PARAMS -metadata track=$count/$num_files\
-			 -metadata title="Part $(($count - 1))" "${f%.*}.opus"
+			ffmpeg $COMMON_PARAMS -i "$f" $OPUS_PARAMS -metadata track="$count"\
+			 -metadata title="Part $((count - 1))" "${f%.*}.opus"
 
 			# shellcheck disable=SC2181
 			if [[ $? = 0 ]]; then
